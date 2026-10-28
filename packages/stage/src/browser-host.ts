@@ -1,4 +1,5 @@
 import { createAudioController } from "./audio.js";
+import { registerPreview } from "./preview-lifecycle.js";
 import type { Runner } from "./runner.js";
 import { resolveFrameTiming } from "./timing.js";
 import type { FrameContext, LitSquareStageAudioModule, PlaybackMode } from "./types.js";
@@ -31,6 +32,8 @@ export function attachBrowserHost(runner: Runner, options: BrowserHostOptions): 
   };
 
   let playing = false;
+  let exporting = false;
+  let endTimer: ReturnType<typeof setTimeout> | null = null;
   let destroyed = false;
   let rafId: number | null = null;
   let renderChain: Promise<FrameContext> = Promise.resolve(runner.getCurrentContext());
@@ -42,6 +45,7 @@ export function attachBrowserHost(runner: Runner, options: BrowserHostOptions): 
   );
 
   const stopPlaybackLoop = () => {
+    if (endTimer !== null) { clearTimeout(endTimer); endTimer = null; }
     if (rafId !== null) {
       cancelAnimationFrame(rafId);
       rafId = null;
@@ -89,6 +93,7 @@ export function attachBrowserHost(runner: Runner, options: BrowserHostOptions): 
           throw new Error("Browser host has already been destroyed");
         }
 
+        if (exporting) return runner.getCurrentContext();
         const context = await runner.setFrameContext(nextContext);
         await audioController?.setFrameContext(context);
         return context;
@@ -97,7 +102,7 @@ export function attachBrowserHost(runner: Runner, options: BrowserHostOptions): 
     renderChain = queuedRender.then(
       (context) => context,
       (error) => {
-        reportRenderFailure(error);
+        if (!destroyed) reportRenderFailure(error);
         return runner.getCurrentContext();
       }
     );
@@ -146,7 +151,7 @@ export function attachBrowserHost(runner: Runner, options: BrowserHostOptions): 
 
   const controller: BrowserHostController = {
     play() {
-      if (playing || destroyed) {
+      if (playing || destroyed || exporting) {
         return;
       }
 
@@ -155,7 +160,14 @@ export function attachBrowserHost(runner: Runner, options: BrowserHostOptions): 
       playbackOriginNow = performance.now();
       playbackOriginTime = currentContext.time;
       stopPlaybackLoop();
-      void audioController?.play(currentContext).catch(() => {});
+      void audioController?.play(currentContext).then(async () => {
+        // A pending play() must not revive sound after pause/export/teardown.
+        if (!playing || destroyed || exporting) await audioController?.pause(runner.getCurrentContext());
+      }).catch(() => {});
+      if (!normalized.loop) {
+        const remaining = Math.max(0, currentTiming().durationSeconds - currentContext.time);
+        endTimer = setTimeout(() => controller.pause(), remaining * 1000);
+      }
       rafId = requestAnimationFrame(tick);
     },
     pause() {
@@ -185,6 +197,9 @@ export function attachBrowserHost(runner: Runner, options: BrowserHostOptions): 
       }
 
       destroyed = true;
+      unregisterPreview();
+      documentTarget?.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", onPageHide);
       controller.pause();
       await renderChain.catch(() => runner.getCurrentContext());
       await audioController?.destroy();
@@ -194,6 +209,18 @@ export function attachBrowserHost(runner: Runner, options: BrowserHostOptions): 
       return playing;
     }
   };
+
+  const unregisterPreview = registerPreview(runner, async () => {
+    exporting = true;
+    controller.pause();
+    await renderChain;
+    await audioController?.pause(runner.getCurrentContext());
+  }, () => { exporting = false; });
+  const documentTarget = typeof document === "undefined" ? null : document;
+  const onVisibilityChange = () => { if (documentTarget?.hidden) controller.pause(); };
+  const onPageHide = () => controller.pause();
+  documentTarget?.addEventListener("visibilitychange", onVisibilityChange);
+  window.addEventListener("pagehide", onPageHide);
 
   void renderFrameAt(runner.getCurrentContext().frame, runner.getCurrentContext().time).catch(() => {});
   void audioController?.preload(runner.getCurrentContext()).catch(() => {});

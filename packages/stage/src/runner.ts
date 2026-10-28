@@ -1,3 +1,4 @@
+import { finishPreviewExport } from "./preview-lifecycle.js";
 import type { FrameContext, LitSquareStageSketch } from "./types.js";
 
 export interface CreateRunnerOptions {
@@ -72,7 +73,7 @@ export function createRunner({ root, sketch, initialContext }: CreateRunnerOptio
     return result;
   };
 
-  return {
+  const runner: Runner = {
     root,
     getCurrentContext() {
       return { ...currentContext };
@@ -117,6 +118,7 @@ export function createRunner({ root, sketch, initialContext }: CreateRunnerOptio
       return enqueue(async () => {
         await ensureReady();
         await sketch.finishExport?.(currentContext, root);
+        finishPreviewExport(runner);
         return { ...currentContext };
       });
     },
@@ -140,4 +142,5 @@ export function createRunner({ root, sketch, initialContext }: CreateRunnerOptio
       return destroyPromise;
     }
   };
+  return runner;
 }

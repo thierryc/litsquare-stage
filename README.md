@@ -39,6 +39,8 @@ Install only what your project needs. Most browser projects start with `@litsqua
 
 The important rule: final motion comes from frame-derived state, not from wall-clock browser playback.
 
+Browser preview pauses when its page is hidden or leaves the page. Export preparation stops preview playback and audio before capturing frames; after export finishes, playback remains paused until explicitly started again. This keeps preview audio separate from offline audio generation and avoids background playback depending on animation-frame callbacks.
+
 ## Quick Start
 
 From this workspace:

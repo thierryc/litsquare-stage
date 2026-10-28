@@ -1,19 +1,23 @@
 # Releasing
 
-This repository publishes only:
+This repository contains three public packages:
 
 - `@litsquare/stage-protocol`
 - `@litsquare/stage`
 - `@litsquare/stage-react`
 
-The workspace root and examples stay private to npm. Publish the packages manually to npm.org; there is no npm publish GitHub Action in this repository.
+The workspace root and examples stay private to npm. Publish packages manually to npm.org; there is no npm publish GitHub Action in this repository.
+
+The Stage background-audio patch targets only `@litsquare/stage@0.1.1`. Publish `@litsquare/stage-protocol` and `@litsquare/stage-react` only after their separate compatibility review. Do not create a repository-wide release tag for a runtime-only patch. Use a package-specific tag if a tag is needed.
+
+Published runtime baseline: `@litsquare/stage@0.1.0` on 2026-07-16, registry SHA-1 `98622770e4c48518113b7023dd4ac465892b8ffd`.
 
 ## Repository Links
 
 - Public runtime packages: https://github.com/thierryc/litsquare-stage
 - Private macOS app: https://github.com/thierryc/litsquare-stage-macos
 - Private Chromium renderer: https://github.com/thierryc/litsquare-stage-chromium
-- Private Codex plugin: local/unpublished repository until a remote is created
+- Public integration plugin: https://github.com/thierryc/litsquare-stage-integrations
 
 ## Local Release Gates
 
@@ -37,9 +41,9 @@ Then inspect package contents:
 
 Confirm the tarballs contain only `dist`, `README.md`, `LICENSE`, and `package.json`, and confirm `@litsquare/stage-react` rewrites its packed dependency on `@litsquare/stage` to the release version.
 
-## Manual npm.org Publish
+## Runtime-Only npm.org Publish
 
-The first `0.1.0` release is a manual npm.org publish.
+The runtime patch is a manual npm.org publish of `@litsquare/stage@0.1.1`. It pauses hidden browser previews and stops preview audio before export. A prepared tarball is not a published package; verify the registry after npm two-factor approval.
 
 1. Create or confirm access to the `@litsquare` npm scope.
 2. Confirm npm login and 2FA readiness:
@@ -49,32 +53,27 @@ npm whoami
 ```
 
 3. Run all local release gates.
-4. Pack release tarballs:
+4. Pack the runtime release tarball:
 
 ```bash
 mkdir -p /tmp/litsquare-stage-npm
-(cd packages/stage-protocol && pnpm pack --pack-destination /tmp/litsquare-stage-npm)
 (cd packages/stage && pnpm pack --pack-destination /tmp/litsquare-stage-npm)
-(cd packages/stage-react && pnpm pack --pack-destination /tmp/litsquare-stage-npm)
 ```
 
-5. Publish in dependency order with npm 2FA:
+5. Publish the exact verified tarball with npm 2FA:
 
 ```bash
-npm publish /tmp/litsquare-stage-npm/litsquare-stage-protocol-0.1.0.tgz --access public
-npm publish /tmp/litsquare-stage-npm/litsquare-stage-0.1.0.tgz --access public
-npm publish /tmp/litsquare-stage-npm/litsquare-stage-react-0.1.0.tgz --access public
+npm publish /tmp/litsquare-stage-npm/litsquare-stage-0.1.1.tgz --access public
 ```
 
-6. Verify npm visibility:
+6. Verify npm visibility and install from the registry in a clean temporary project:
 
 ```bash
-npm view @litsquare/stage-protocol@0.1.0 version
-npm view @litsquare/stage@0.1.0 version
-npm view @litsquare/stage-react@0.1.0 version
+npm view @litsquare/stage@0.1.1 version dist.integrity
+npm install @litsquare/stage@0.1.1
 ```
 
-7. Create a GitHub release for `v0.1.0` after all three npm packages are visible.
+7. Compare the registry integrity with the verified tarball, record publication, then refresh the integration templates and test their frozen lockfiles in clean projects.
 
 ## Manual Push Workflow
 

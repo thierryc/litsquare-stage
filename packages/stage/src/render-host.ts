@@ -1,4 +1,5 @@
 import { createAudioController } from "./audio.js";
+import { stopPreviewForExport } from "./preview-lifecycle.js";
 import type { Runner } from "./runner.js";
 import type { AudioRenderContext, FrameContext, LitSquareStageAudioModule } from "./types.js";
 
@@ -158,6 +159,7 @@ export function attachRenderHost(runner: Runner, options: RenderHostOptions = {}
   };
 
   const prepareExport = async () => {
+    await stopPreviewForExport(runner);
     await audioController?.pause(runner.getCurrentContext());
     await runner.prepareExport();
     emit({
