@@ -10,6 +10,8 @@ The workspace root and examples stay private to npm. Publish packages manually t
 
 The Stage background-audio patch targets only `@litsquare/stage@0.1.1`. Publish `@litsquare/stage-protocol` and `@litsquare/stage-react` only after their separate compatibility review. Do not create a repository-wide release tag for a runtime-only patch. Use a package-specific tag if a tag is needed.
 
+Published runtime patch: `@litsquare/stage@0.1.1` on 2026-10-27, registry SHA-1 `f85ae8f89a976e057cd6b5617748479e17949894`. Registry integrity matches the verified release tarball. All eight integration templates pass clean registry install/build/validation with pnpm 10.29.2.
+
 Published runtime baseline: `@litsquare/stage@0.1.0` on 2026-07-16, registry SHA-1 `98622770e4c48518113b7023dd4ac465892b8ffd`.
 
 ## Repository Links
